@@ -1,20 +1,34 @@
 #!/usr/bin/env bun
+
+// the tunneled http server port
 const remoteTunnelPort = Bun.env.CALL_ME_BACK_TUNNEL_POST || 6654
+// the remote host define in ssh config in the host
+const sshHost  = Bun.env.CALL_ME_BACK_SSH_HOST || 'my-remote-coding-host'
 
 const args = process.argv.slice(2)
 
 // define the main command
 const mainCmd = 'code'
-
 // define the args that will be intercepted to what this command's args
 const interceptArgs = [
   "--remote",
-  "ssh-remote+hy-coding",
+  `ssh-remote+${sshHost}`,
+  "-r",
+  "-g"
 ]
+
+// the last tow vscode args will be the file row and column
+// need to convert the file path to ${file}:${row}:${column}
+function argsConvert(): string[] {
+  const CHARACTER = args.pop()
+  const LINE = args.pop()
+  const FILE  = args.pop()
+  return [`${FILE}:${LINE}:${CHARACTER}`]
+}
 
 const command = {
   command: mainCmd,
-  args: interceptArgs.concat(args),
+  args: interceptArgs.concat(argsConvert()),
 }
 
 // do http post request to localhost:${remoteTunnelPort}
