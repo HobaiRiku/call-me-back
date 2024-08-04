@@ -61,6 +61,7 @@ appendWindowsPath = true
 ```
 which mean we can interact with windows environment, so the `code` command should work in wsl environment, it will launch vscode in windows i think (as long as vscode cli install in windows). so there should not be a problem with where the `code` should run.Otherwise, the situation is similar to recent vscode remote.
 
+Still i don't know if it's the right understanding for remote-wsl in vscode, haven't investigate it yet.
 
 ## Related
 * [Remote support · Issue #72 · yyx990803/launch-editor ](https://github.com/yyx990803/launch-editor/issues/72)
