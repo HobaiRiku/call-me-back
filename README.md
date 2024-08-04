@@ -1,6 +1,6 @@
 # Call Me Back
 
-A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor) (which is the fundamental part of [vite-plugin-vue-inspector](https://github.com/webfansplz/vite-plugin-vue-inspector) and [vite-plugin-vue-devtools](https://devtools-next.vuejs.org/guide/vite-plugin))  working in vscode remote environment.
+A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor) (which is the fundamental part of [vite-plugin-vue-inspector](https://github.com/webfansplz/vite-plugin-vue-inspector) and [vite-plugin-vue-devtools](https://devtools-next.vuejs.org/guide/vite-plugin))  working in vscode remote-ssh environment.
 
 ## Usage
 
@@ -8,6 +8,7 @@ A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor
 2. clone this repo in your `host`(your local computer) and `remote`(your remote coding server)
 3. open your code project or workspace in vscode remote environment
 4. running the `server.ts` in a terminal (assume the remote hostname is my-remote-coding-host):
+   
    ```bash
     // with bun
     bun ./src/server.ts my-remote-coding-host
@@ -16,9 +17,18 @@ A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor
     ./src/server.ts my-remote-coding-host
    ```
 5. set the `CALL_ME_BACK_SSH_HOST` env in your `remote` to the same as in step 4 (assume to be my-remote-coding-host).   
-5. configure the `launch-editor` in your project, some like this:
+   ```bash
+    export CALL_ME_BACK_SSH_HOST=my-remote-coding-host
+   ```
+   set to your `.bashrc` or something like that.
+6. make `client.ts` executable in your `remote`:
+   ```bash
+    chmod +x ./src/client.ts
+   ```
+7. configure the `launch-editor` in your project, some like this:
    ```ts
-   // vue.config.ts// https://vitejs.dev/config/ 
+   // vue.config.ts    
+   // https://vitejs.dev/config/ 
     export default defineConfig(({mode, command}) => {
       // ...
       plugins: [
@@ -32,7 +42,7 @@ A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor
     }
    
    ```
-6. run your project and should work.
+8. run your project and should work.
 
 ## Why
 1. `launch-editor` is assume all things run in the same machine environment, but in vscode remote environment, the `run dev` and the `launch-editor` are run in different remote, so the `code` (vscode cli) will not effect the local vscode client.
@@ -49,7 +59,7 @@ the wsl environment is a little different, when everything is default, the [`/et
 enabled = true
 appendWindowsPath = true
 ```
-which mean we can interact with windows environment, so the `code` command should work in wsl environment, it will launch vscode in windows i think (as long as vscode cli install in windows). so there should not be a problem with where the `code` should run.
+which mean we can interact with windows environment, so the `code` command should work in wsl environment, it will launch vscode in windows i think (as long as vscode cli install in windows). so there should not be a problem with where the `code` should run.Otherwise, the situation is similar to recent vscode remote.
 
 
 ## Related
