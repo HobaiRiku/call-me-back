@@ -4,10 +4,8 @@ A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor
 
 ## Usage
 
-1. install [bunjs](https://bun.sh/)
-2. clone this repo in your `host`(your local computer) and `remote`(your remote coding server)
-3. open your code project or workspace in vscode remote environment
-4. running the `server.ts` in a terminal (assume the remote hostname is my-remote-coding-host):
+1. install [bunjs](https://bun.sh/) in both local and remote machine.
+2. running the `server.ts` in a terminal (assume the remote hostname is my-remote-coding-host):
    
    ```bash
     // with bun
@@ -16,16 +14,7 @@ A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor
     chmod +x ./src/server.ts
     ./src/server.ts my-remote-coding-host
    ```
-5. set the `CALL_ME_BACK_SSH_HOST` env in your `remote` to the same as in step 4 (assume to be my-remote-coding-host).   
-   ```bash
-    export CALL_ME_BACK_SSH_HOST=my-remote-coding-host
-   ```
-   set to your `.bashrc` or something like that.
-6. make `client.ts` executable in your `remote`:
-   ```bash
-    chmod +x ./src/client.ts
-   ```
-7. configure the `launch-editor` in your project, some like this:
+3. open your code project or workspace in vscode remote environment and configure the `launch-editor` in your project, some like this:
    ```ts
    // vue.config.ts    
    // https://vitejs.dev/config/ 
@@ -34,7 +23,7 @@ A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor
       plugins: [
       // ...
       VueDevTools({
-        launchEditor:'/home/xxx/path-to/call-me-back/src/client.ts'
+        launchEditor:'/home/xxx/.call-me-back/my-remote-coding-host/client.ts'
       }),
       // ...
       ]
@@ -42,7 +31,7 @@ A simple solution for [launch-editor](https://github.com/yyx990803/launch-editor
     }
    
    ```
-8. run your project and should work.
+4. run your project and should work.
 
 ## Why
 1. `launch-editor` is assume all things run in the same machine environment, but in vscode remote environment, the `run dev` and the `launch-editor` are run in different remote, so the `code` (vscode cli) will not effect the local vscode client.

@@ -1,8 +1,19 @@
 #!/usr/bin/env bun
 
-import { Server } from 'bun'
+import { Server, Subprocess } from 'bun'
 // define main server port
 const serverPost = Bun.env.CALL_ME_BACK_SERVER_POST || 6654
+// the remote tunnel ssh host, can be apply by fist argument
+const sshHost = Bun.env.CALL_ME_BACK_SSH_HOST || process.argv[2] || ''
+const remoteTunnelPort = Bun.env.CALL_ME_BACK_TUNNEL_POST || process.argv[3] || serverPost
+// random credential
+const credential = Math.random().toString(36).substring(2)
+
+// sshHost must required
+if (!sshHost) {
+  console.error('❗️ ssh hostname is required')
+  process.exit(1)
+}
 
 // main http server
 const server = Bun.serve({
@@ -22,6 +33,11 @@ console.info(`😺 call-me-back is running on http://localhost:${serverPost}`)
 
 // main http handler, only handel post
 async function onFetch(req: Request, _: Server) {
+  // validate credential
+  const credentialHeader = req.headers.get('Authorization')
+  if (credentialHeader !== `Bearer ${credential}`) {
+    return new Response('Unauthorized', { status: 401 })
+  }
   if (req.method === 'POST') {
     const body = await req.json()
     const [command, err] = makeCommand(body)
@@ -112,39 +128,114 @@ function makeCommand(json: Record<string, any>) {
   return [err ? null : command, err] as const
 }
 
-// the remote tunnel ssh host, can be apply by fist argument
-const processFistArg = process.argv[2]
-const sshHost = Bun.env.CALL_ME_BACK_SSH_HOST || processFistArg || ''
-const remoteTunnelPort = Bun.env.CALL_ME_BACK_TUNNEL_POST || 6654
 
-// example: ssh -N -R localhost:xxxx:localhost:xxxx -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 xxxx
+// auto push to remote ~/.call-me-back/${hostName}client.ts
+const clientFilePath = new URL('./client.ts', import.meta.url).pathname
 
-if (sshHost) {
-  try {
-    const _connectRemoteTunnel = Bun.spawn({
-      cmd: [
-        'ssh',
-        '-N',
-        '-R',
-        `localhost:${remoteTunnelPort}:localhost:${serverPost}`,
-        '-o',
-        'ExitOnForwardFailure=yes',
-        '-o',
-        'ServerAliveInterval=15',
-        '-o',
-        'ServerAliveCountMax=3',
-        sshHost,
-      ],
-    })
-    console.info('✅ connect remote tunnel success')
-  } catch (err) {
-    console.error('❗️ connect remote tunnel failed:', (err as Error).message)
-    // exit process
+// mkdir -p ~/.call-me-back$/{hostName} in remote
+const mkdir = await Bun.spawn({
+  cmd: ['ssh', sshHost, 'mkdir', '-p', `~/.call-me-back/${sshHost}`],
+}).exited
+
+// push credential and port to remote use ssh, located at ~/.call-me-back/${hostName}/
+const pushCredential = await Bun.spawn({
+  cmd: [
+    'ssh',
+    sshHost,
+    'echo',
+    credential,
+    '>',
+    `~/.call-me-back/${sshHost}/credential`,
+  ],
+}).exited
+
+const pushPort = await Bun.spawn({
+  cmd: [
+    'ssh',
+    sshHost,
+    'echo',
+    remoteTunnelPort.toString(),
+    '>',
+    `~/.call-me-back/${sshHost}/port`,
+  ],
+}).exited
+
+// make ~/.call-me-back/${hostName} 700
+const chmod = await Bun.spawn({
+  cmd: ['ssh', sshHost, 'chmod', '-R', '700', `~/.call-me-back/${sshHost}`],
+}).exited
+
+// push client.ts to remote
+const pushClient = await Bun.spawn({
+  cmd: [
+    'scp',
+    clientFilePath,
+    `${sshHost}:~/.call-me-back/${sshHost}/client.ts`,
+  ],
+}).exited
+
+// make client.ts +x
+const chmodClient = await Bun.spawn({
+  cmd: ['ssh', sshHost, 'chmod', '+x', `~/.call-me-back/${sshHost}/client.ts`],
+}).exited
+
+// get remote user home
+const remoteUserHome = Bun.spawn({
+  cmd: ['ssh', sshHost, 'echo', '$HOME'],
+})
+let remoteUserHomePath = await new Response(remoteUserHome.stdout).text()
+await remoteUserHome.exited
+// remove \r\n
+remoteUserHomePath = remoteUserHomePath.replace(/[\r\n]/g, '')
+
+// validate all ssh exec success
+const exitCodes = [
+  mkdir,
+  pushCredential,
+  pushPort,
+  chmod,
+  pushClient,
+  chmodClient,
+]
+exitCodes.forEach((code: number) => {
+  if (code !== 0) {
+    console.error('❗️ push config to remote failed')
     server.stop()
     process.exit(1)
   }
-} else {
-  console.warn(
-    '😟 remote tunnel host not set, this programs will not be able to receive remote command'
-  )
+})
+
+console.info('✅ setting client on remote success')
+
+
+// example: ssh -N -R localhost:xxxx:localhost:xxxx -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 xxxx
+let connectRemoteTunnel:Subprocess 
+try {
+  connectRemoteTunnel = Bun.spawn({
+    cmd: [
+      'ssh',
+      '-N',
+      '-R',
+      `localhost:${remoteTunnelPort}:localhost:${serverPost}`,
+      '-o',
+      'ExitOnForwardFailure=yes',
+      '-o',
+      'ServerAliveInterval=15',
+      '-o',
+      'ServerAliveCountMax=3',
+      sshHost,
+    ],
+  })
+  console.info('✅ connect remote tunnel success')
+} catch (err) {
+  console.error('❗️ connect remote tunnel failed:', (err as Error).message)
+  // exit process
+  server.stop()
+  process.exit(1)
 }
+
+
+console.info(
+  '🛠️ configure your launch-editor to:',
+  `${remoteUserHomePath}/.call-me-back/${sshHost}/client.ts`
+)

@@ -1,9 +1,34 @@
 #!/usr/bin/env bun
 
+// all config will be push to remote by server in ~/.call-me-back/${hostName}
+// include credential, port
+// and this client should be in ~/.call-me-back/${hostName}/client.ts
+
+const configPath = new URL('./', import.meta.url).pathname
+
+let credential: string
+let port: string
+try {
+  credential = await Bun.file(configPath + 'credential').text()
+  port = await Bun.file(configPath + 'port').text()
+} catch (err) {
+  console.error('❗️ read config file failed:', (err as Error).message)
+  process.exit(1)  
+}
+
+// validate the credential and port
+if (!credential || !port) {
+  console.error('❗️ credential and port is required, make sure server running and config file is correct')
+  process.exit(1)
+}
+
+// find hostname from configPath 
+const hostName = configPath.split('/').at(-2)
+
 // the tunneled http server port
-const remoteTunnelPort = Bun.env.CALL_ME_BACK_TUNNEL_POST || 6654
+const remoteTunnelPort = Number(port)
 // the remote host define in ssh config in the host
-const sshHost  = Bun.env.CALL_ME_BACK_SSH_HOST || 'my-remote-coding-host'
+const sshHost  = hostName
 
 const args = process.argv.slice(2)
  
@@ -37,6 +62,7 @@ const request = new Request(`http://localhost:${remoteTunnelPort}`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${credential}`
   },
   body: JSON.stringify(command),
 })
