@@ -160,10 +160,7 @@ const pushPort = await Bun.spawn({
   ],
 }).exited
 
-// make ~/.call-me-back/${hostName} 700
-const chmod = await Bun.spawn({
-  cmd: ['ssh', sshHost, 'chmod', '-R', '700', `~/.call-me-back/${sshHost}`],
-}).exited
+
 
 // push client.ts to remote
 const pushClient = await Bun.spawn({
@@ -174,10 +171,16 @@ const pushClient = await Bun.spawn({
   ],
 }).exited
 
-// make client.ts +x
-const chmodClient = await Bun.spawn({
-  cmd: ['ssh', sshHost, 'chmod', '+x', `~/.call-me-back/${sshHost}/client.ts`],
+// make ~/.call-me-back/${hostName} 700
+const chmod = await Bun.spawn({
+  cmd: ['ssh', sshHost, 'chmod', '-R', '700', `~/.call-me-back/${sshHost}`],
 }).exited
+
+// make ~/.call-me-back/${hostName}/credentail and port -x 
+const chmodConfigFile = await Bun.spawn({
+  cmd: ['ssh', sshHost, 'chmod', '-x', `~/.call-me-back/${sshHost}/credential`, `~/.call-me-back/${sshHost}/port`],
+}).exited
+
 
 // get remote user home
 const remoteUserHome = Bun.spawn({
@@ -193,9 +196,9 @@ const exitCodes = [
   mkdir,
   pushCredential,
   pushPort,
-  chmod,
   pushClient,
-  chmodClient,
+  chmod,
+  chmodConfigFile
 ]
 exitCodes.forEach((code: number) => {
   if (code !== 0) {
